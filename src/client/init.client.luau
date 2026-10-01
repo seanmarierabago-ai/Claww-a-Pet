@@ -8,8 +8,16 @@ local playerGui = player:WaitForChild("PlayerGui")
 local petAwarded = ReplicatedStorage:WaitForChild("PetAwarded")
 local selectPetRemote = ReplicatedStorage:WaitForChild("SelectPet")
 
-pcall(function()
-	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+task.spawn(function()
+	for _ = 1, 10 do
+		local enabled = pcall(function()
+			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
+		end)
+		if enabled then
+			return
+		end
+		task.wait(0.25)
+	end
 end)
 
 local screenGui = playerGui:FindFirstChild("ClawMachineGui")
@@ -42,11 +50,20 @@ if not rewardLabel then
 	rewardLabel.TextWrapped = true
 	rewardLabel.Visible = false
 	rewardLabel.Parent = screenGui
+end
 
-	local stroke = Instance.new("UIStroke")
-	stroke.Name = "RarityStroke"
-	stroke.Thickness = 2
-	stroke.Parent = rewardLabel
+rewardLabel.Size = UDim2.new(0.72, 0, 0, 96)
+rewardLabel.Font = Enum.Font.GothamMedium
+rewardLabel.TextColor3 = Color3.fromRGB(232, 238, 240)
+rewardLabel.TextSize = 16
+rewardLabel.TextWrapped = true
+rewardLabel.TextStrokeTransparency = 1
+rewardLabel.TextXAlignment = Enum.TextXAlignment.Center
+rewardLabel.TextYAlignment = Enum.TextYAlignment.Center
+rewardLabel.BackgroundTransparency = 0.16
+local rarityStroke = rewardLabel:FindFirstChild("RarityStroke")
+if rarityStroke then
+	rarityStroke:Destroy()
 end
 
 local walletLabel = screenGui:FindFirstChild("WalletLabel")
@@ -92,6 +109,7 @@ if not petHotbar then
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = petHotbar
 end
+petHotbar.Visible = false
 
 local rarityColors = {
 	Common = Color3.fromRGB(175, 183, 190),
@@ -265,6 +283,7 @@ else
 	inventoryCount = inventoryPanel:WaitForChild("PetCount")
 	emptyMessage = inventoryPanel:WaitForChild("EmptyMessage")
 end
+inventoryPanel.Visible = false
 
 inventoryPanel.Size = UDim2.new(0.9, 0, 0.82, 0)
 local panelSizeConstraint = inventoryPanel:FindFirstChildOfClass("UISizeConstraint")
@@ -580,18 +599,17 @@ ContextActionService:BindActionAtPriority("ClosePetInventory", function(_, input
 	return Enum.ContextActionResult.Pass
 end, false, Enum.ContextActionPriority.High.Value + 1, Enum.KeyCode.Escape)
 
+ContextActionService:UnbindAction("SelectPetHotbarSlot")
+ContextActionService:UnbindAction("TogglePetInventory")
+ContextActionService:UnbindAction("ClosePetInventory")
+
 local messageNumber = 0
-petAwarded.OnClientEvent:Connect(function(petName, rarity, totalPets, income)
+petAwarded.OnClientEvent:Connect(function(petName, _rarity, totalPets, income, passivePercent)
 	messageNumber += 1
 	local currentMessage = messageNumber
 
-	rewardLabel.Text = string.format("You got %s! - %s\n+%d Coins/s | Pets: %d", petName, rarity, income or 0, totalPets)
+	rewardLabel.Text = string.format("Got %s\n+%.2f coins/s | passive +%d%%", petName, income or 0, passivePercent or 0)
 	rewardLabel.Visible = true
-
-	local stroke = rewardLabel:FindFirstChild("RarityStroke")
-	if stroke then
-		stroke.Color = rarityColors[rarity] or Color3.fromRGB(255, 255, 255)
-	end
 
 	task.delay(3, function()
 		if currentMessage == messageNumber then
